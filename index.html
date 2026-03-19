@@ -3,300 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>もぐらたたき！ - Whac-A-Mole</title>
+    <title>NEON WHACKer - Vanilla Edition</title>
+    <link rel="stylesheet" href="style.css">
     <style>
-        :root {
-            --grass-color: #4CAF50;
-            --hole-color: #5D4037;
-            --mole-color: #795548;
-            --text-color: #333;
-            --bg-color: #E8F5E9;
+        /* 追加のバニラ用スタイル */
+        .hidden { display: none !important; }
+        #game-over-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: flex; flexDirection: column;
+            align-items: center; justify-content: center; border-radius: 15px;
+            z-index: 10; flex-direction: column;
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            color: var(--text-color);
+        .restart-btn {
+            background: transparent; border: 2px solid var(--neon-cyan);
+            color: var(--neon-cyan); padding: 10px 30px; fontSize: 20px;
+            cursor: pointer; border-radius: 5px; margin-top: 20px;
+            transition: all 0.3s; font-size: 20px;
         }
-
-        h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            color: #2E7D32;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .stats {
-            display: flex;
-            gap: 40px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 20px;
-            background: white;
-            padding: 10px 30px;
-            border-radius: 50px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-
-        .score-val, .time-val {
-            color: #d32f2f;
-        }
-
-        .game-board {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            background-color: var(--grass-color);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            position: relative;
-        }
-
-        .hole {
-            width: 150px;
-            height: 150px;
-            background-color: var(--hole-color);
-            border-radius: 50% / 20%;
-            position: relative;
-            overflow: hidden;
-            box-shadow: inset 0 10px 20px rgba(0,0,0,0.5);
-        }
-
-        .hole::after {
-            content: '';
-            display: block;
-            width: 100%;
-            height: 40px;
-            background: rgba(0,0,0,0.2);
-            position: absolute;
-            bottom: 0;
-            border-radius: 50%;
-        }
-
-        .mole {
-            width: 100px;
-            height: 130px;
-            background-color: var(--mole-color);
-            position: absolute;
-            bottom: -130px;
-            left: 25px;
-            border-radius: 50px 50px 20px 20px;
-            transition: transform 0.1s ease-out;
-            cursor: pointer;
-            user-select: none;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding-top: 15px;
-        }
-
-        /* Mole Face Details */
-        .mole::before {
-            content: '👀';
-            font-size: 24px;
-        }
-
-        .mole.up {
-            transform: translateY(-135px);
-        }
-
-        .mole:active {
-            transform: translateY(-135px) scale(0.9);
-        }
-
-        .controls {
-            margin-top: 30px;
-        }
-
-        button {
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: white;
-            background-color: #2E7D32;
-            border: none;
-            border-radius: 30px;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-
-        button:hover {
-            background-color: #1B5E20;
-            transform: translateY(-2px);
-            box-shadow: 0 7px 20px rgba(0,0,0,0.2);
-        }
-
-        button:active {
-            transform: translateY(1px);
-        }
-
-        /* Modal / Game Over Overlay */
-        .overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            z-index: 100;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            color: white;
-        }
-
-        .overlay h2 {
-            font-size: 4rem;
-            margin-bottom: 0;
-        }
-
-        .overlay p {
-            font-size: 2rem;
-            margin-top: 10px;
-        }
-
-        @media (max-width: 600px) {
-            .hole {
-                width: 100px;
-                height: 100px;
-            }
-            .mole {
-                width: 70px;
-                height: 90px;
-                left: 15px;
-            }
-            .mole.up {
-                transform: translateY(-95px);
-            }
+        .restart-btn:hover {
+            background: var(--neon-cyan);
+            color: black;
         }
     </style>
 </head>
 <body>
+    <div id="game-container" class="game-container">
+        <div class="hud">
+            <div id="score-display">SCORE: 00000</div>
+            <div id="time-display" style="color: var(--neon-magenta)">TIME: 30s</div>
+        </div>
+        
+        <div id="grid" class="grid">
+            <!-- Holes will be generated here -->
+        </div>
 
-    <h1>もぐらたたき！</h1>
+        <div style="margin-top: 20px; text-align: center;">
+            <div id="combo-display" style="color: var(--neon-yellow)">COMBO: x0</div>
+            <div id="highscore-display" style="font-size: 14px; opacity: 0.7">HIGH SCORE: 0</div>
+        </div>
 
-    <div class="stats">
-        <div>スコア: <span class="score-val" id="score">0</span></div>
-        <div>残り時間: <span class="time-val" id="time">30</span>s</div>
-    </div>
-
-    <div class="game-board">
-        <div class="hole"><div class="mole" onclick="bonk(this)"></div></div>
-        <div class="hole"><div class="mole" onclick="bonk(this)"></div></div>
-        <div class="hole"><div class="mole" onclick="bonk(this)"></div></div>
-        <div class="hole"><div class="mole" onclick="bonk(this)"></div></div>
-        <div class="hole"><div class="mole" onclick="bonk(this)"></div></div>
-        <div class="hole"><div class="mole" onclick="bonk(this)"></div></div>
-        <div class="hole"><div class="mole" onclick="bonk(this)"></div></div>
-        <div class="hole"><div class="mole" onclick="bonk(this)"></div></div>
-        <div class="hole"><div class="mole" onclick="bonk(this)"></div></div>
-    </div>
-
-    <div class="controls">
-        <button id="start-btn" onclick="startGame()">スタート！</button>
-    </div>
-
-    <div id="game-over" class="overlay">
-        <h2>終了！</h2>
-        <p>スコア: <span id="final-score">0</span></p>
-        <button onclick="closeOverlay()">もう一度</button>
+        <!-- Game Over Overlay -->
+        <div id="game-over-overlay" class="hidden">
+            <h2 style="color: var(--neon-magenta); font-size: 48px; margin: 0">GAME OVER</h2>
+            <p id="final-score" style="font-size: 24px">FINAL SCORE: 0</p>
+            <button id="restart-btn" class="restart-btn">RESTART</button>
+        </div>
     </div>
 
     <script>
-        const holes = document.querySelectorAll('.hole');
-        const scoreBoard = document.querySelector('#score');
-        const timeBoard = document.querySelector('#time');
-        const moles = document.querySelectorAll('.mole');
-        const gameOverOverlay = document.getElementById('game-over');
-        const finalScoreText = document.getElementById('final-score');
+        const GRID_SIZE = 9;
+        const INITIAL_TIME = 30;
         
-        let lastHole;
-        let timeUp = false;
         let score = 0;
-        let countdown;
-        let timerSeconds = 30;
+        let timeLeft = INITIAL_TIME;
+        let combo = 0;
+        let highScore = localStorage.getItem('neon-whack-highscore-vanilla') || 0;
+        let isGameOver = false;
+        let activeMoleTimeout = null;
+        let gameTimer = null;
 
-        function randomTime(min, max) {
-            return Math.round(Math.random() * (max - min) + min);
+        const gridElement = document.getElementById('grid');
+        const scoreElement = document.getElementById('score-display');
+        const timeElement = document.getElementById('time-display');
+        const comboElement = document.getElementById('combo-display');
+        const highscoreElement = document.getElementById('highscore-display');
+        const overlay = document.getElementById('game-over-overlay');
+        const finalScoreElement = document.getElementById('final-score');
+        const container = document.getElementById('game-container');
+
+        // Initialize Grid
+        for (let i = 0; i < GRID_SIZE; i++) {
+            const hole = document.createElement('div');
+            hole.className = 'hole';
+            const mole = document.createElement('div');
+            mole.className = 'mole';
+            mole.dataset.index = i;
+            hole.appendChild(mole);
+            hole.addEventListener('click', () => handleWhack(i));
+            gridElement.appendChild(hole);
         }
 
-        function randomHole(holes) {
-            const idx = Math.floor(Math.random() * holes.length);
-            const hole = holes[idx];
-            if (hole === lastHole) {
-                return randomHole(holes);
-            }
-            lastHole = hole;
-            return hole;
-        }
-
-        function peep() {
-            const time = randomTime(500, 1000); // 難易度はここで調整
-            const hole = randomHole(holes);
-            const mole = hole.querySelector('.mole');
-            
-            mole.classList.add('up');
-            
-            setTimeout(() => {
-                mole.classList.remove('up');
-                if (!timeUp) peep();
-            }, time);
-        }
+        highscoreElement.innerText = `HIGH SCORE: ${highScore}`;
 
         function startGame() {
-            scoreBoard.textContent = 0;
-            timeBoard.textContent = timerSeconds;
-            timeUp = false;
             score = 0;
-            peep();
+            timeLeft = INITIAL_TIME;
+            combo = 0;
+            isGameOver = false;
+            updateHUD();
+            overlay.classList.add('hidden');
             
-            // カウントダウン開始
-            let timeLeft = timerSeconds;
-            countdown = setInterval(() => {
+            gameTimer = setInterval(() => {
                 timeLeft--;
-                timeBoard.textContent = timeLeft;
-                if (timeLeft <= 0) {
-                    clearInterval(countdown);
-                    timeUp = true;
-                    showGameOver();
-                }
+                updateHUD();
+                if (timeLeft <= 0) endGame();
             }, 1000);
 
-            document.getElementById('start-btn').disabled = true;
+            nextMole();
         }
 
-        function bonk(mole) {
-            if (!mole.classList.contains('up')) return; // 上にいない時は無効
+        function nextMole() {
+            if (isGameOver) return;
+
+            // Clear previous active mole
+            document.querySelectorAll('.mole').forEach(m => m.classList.remove('active', 'hit'));
+
+            const randomIndex = Math.floor(Math.random() * GRID_SIZE);
+            const mole = document.querySelectorAll('.mole')[randomIndex];
+            mole.classList.add('active');
+
+            const speed = Math.max(400, 1000 - (score / 10)); // Accelerate
+            activeMoleTimeout = setTimeout(nextMole, speed);
+        }
+
+        function handleWhack(index) {
+            if (isGameOver) return;
+            const mole = document.querySelectorAll('.mole')[index];
+
+            if (mole.classList.contains('active')) {
+                // Hit!
+                const points = 100 + (combo * 10);
+                score += points;
+                combo++;
+                mole.classList.remove('active');
+                mole.classList.add('hit');
+                
+                // Screen Shake
+                container.classList.add('screen-shake');
+                setTimeout(() => container.classList.remove('screen-shake'), 200);
+            } else {
+                // Miss
+                combo = 0;
+            }
+            updateHUD();
+        }
+
+        function updateHUD() {
+            scoreElement.innerText = `SCORE: ${score.toString().padStart(5, '0')}`;
+            timeElement.innerText = `TIME: ${timeLeft}s`;
+            comboElement.innerText = `COMBO: x${combo}`;
+        }
+
+        function endGame() {
+            isGameOver = true;
+            clearInterval(gameTimer);
+            clearTimeout(activeMoleTimeout);
             
-            score++;
-            mole.classList.remove('up');
-            scoreBoard.textContent = score;
-            
-            // ヒット時の視覚フィードバック（オプション）
-            mole.style.backgroundColor = '#d32f2f';
-            setTimeout(() => {
-                mole.style.backgroundColor = '';
-            }, 100);
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('neon-whack-highscore-vanilla', highScore);
+                highscoreElement.innerText = `HIGH SCORE: ${highScore}`;
+            }
+
+            finalScoreElement.innerText = `FINAL SCORE: ${score}`;
+            overlay.classList.remove('hidden');
         }
 
-        function showGameOver() {
-            finalScoreText.textContent = score;
-            gameOverOverlay.style.display = 'flex';
-        }
+        document.getElementById('restart-btn').addEventListener('click', startGame);
 
-        function closeOverlay() {
-            gameOverOverlay.style.display = 'none';
-            document.getElementById('start-btn').disabled = false;
-        }
+        // Start initial game
+        startGame();
     </script>
 </body>
 </html>
