@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEON WHACKer - Vanilla Edition</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* 追加のバニラ用スタイル */
+        .hidden { display: none !important; }
+        #game-over-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); display: flex; flexDirection: column;
+            align-items: center; justify-content: center; border-radius: 15px;
+            z-index: 10; flex-direction: column;
+        }
+        .restart-btn {
+            background: transparent; border: 2px solid var(--neon-cyan);
+            color: var(--neon-cyan); padding: 10px 30px; fontSize: 20px;
+            cursor: pointer; border-radius: 5px; margin-top: 20px;
+            transition: all 0.3s; font-size: 20px;
+        }
+        .restart-btn:hover {
+            background: var(--neon-cyan);
+            color: black;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container" class="game-container">
+        <div class="hud">
+            <div id="score-display">SCORE: 00000</div>
+            <div id="time-display" style="color: var(--neon-magenta)">TIME: 30s</div>
+        </div>
+        
+        <div id="grid" class="grid">
+            <!-- Holes will be generated here -->
+        </div>
+
+        <div style="margin-top: 20px; text-align: center;">
+            <div id="combo-display" style="color: var(--neon-yellow)">COMBO: x0</div>
+            <div id="highscore-display" style="font-size: 14px; opacity: 0.7">HIGH SCORE: 0</div>
+        </div>
+
+        <!-- Game Over Overlay -->
+        <div id="game-over-overlay" class="hidden">
+            <h2 style="color: var(--neon-magenta); font-size: 48px; margin: 0">GAME OVER</h2>
+            <p id="final-score" style="font-size: 24px">FINAL SCORE: 0</p>
+            <button id="restart-btn" class="restart-btn">RESTART</button>
+        </div>
+    </div>
+
+    <script>
+        const GRID_SIZE = 9;
+        const INITIAL_TIME = 30;
+        
+        let score = 0;
+        let timeLeft = INITIAL_TIME;
+        let combo = 0;
+        let highScore = localStorage.getItem('neon-whack-highscore-vanilla') || 0;
+        let isGameOver = false;
+        let activeMoleTimeout = null;
+        let gameTimer = null;
+
+        const gridElement = document.getElementById('grid');
+        const scoreElement = document.getElementById('score-display');
+        const timeElement = document.getElementById('time-display');
+        const comboElement = document.getElementById('combo-display');
+        const highscoreElement = document.getElementById('highscore-display');
+        const overlay = document.getElementById('game-over-overlay');
+        const finalScoreElement = document.getElementById('final-score');
+        const container = document.getElementById('game-container');
+
+        // Initialize Grid
+        for (let i = 0; i < GRID_SIZE; i++) {
+            const hole = document.createElement('div');
+            hole.className = 'hole';
+            const mole = document.createElement('div');
+            mole.className = 'mole';
+            mole.dataset.index = i;
+            hole.appendChild(mole);
+            hole.addEventListener('click', () => handleWhack(i));
+            gridElement.appendChild(hole);
+        }
+
+        highscoreElement.innerText = `HIGH SCORE: ${highScore}`;
+
+        function startGame() {
+            score = 0;
+            timeLeft = INITIAL_TIME;
+            combo = 0;
+            isGameOver = false;
+            updateHUD();
+            overlay.classList.add('hidden');
+            
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                updateHUD();
+                if (timeLeft <= 0) endGame();
+            }, 1000);
+
+            nextMole();
+        }
+
+        function nextMole() {
+            if (isGameOver) return;
+
+            // Clear previous active mole
+            document.querySelectorAll('.mole').forEach(m => m.classList.remove('active', 'hit'));
+
+            const randomIndex = Math.floor(Math.random() * GRID_SIZE);
+            const mole = document.querySelectorAll('.mole')[randomIndex];
+            mole.classList.add('active');
+
+            const speed = Math.max(400, 1000 - (score / 10)); // Accelerate
+            activeMoleTimeout = setTimeout(nextMole, speed);
+        }
+
+        function handleWhack(index) {
+            if (isGameOver) return;
+            const mole = document.querySelectorAll('.mole')[index];
+
+            if (mole.classList.contains('active')) {
+                // Hit!
+                const points = 100 + (combo * 10);
+                score += points;
+                combo++;
+                mole.classList.remove('active');
+                mole.classList.add('hit');
+                
+                // Screen Shake
+                container.classList.add('screen-shake');
+                setTimeout(() => container.classList.remove('screen-shake'), 200);
+            } else {
+                // Miss
+                combo = 0;
+            }
+            updateHUD();
+        }
+
+        function updateHUD() {
+            scoreElement.innerText = `SCORE: ${score.toString().padStart(5, '0')}`;
+            timeElement.innerText = `TIME: ${timeLeft}s`;
+            comboElement.innerText = `COMBO: x${combo}`;
+        }
+
+        function endGame() {
+            isGameOver = true;
+            clearInterval(gameTimer);
+            clearTimeout(activeMoleTimeout);
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('neon-whack-highscore-vanilla', highScore);
+                highscoreElement.innerText = `HIGH SCORE: ${highScore}`;
+            }
+
+            finalScoreElement.innerText = `FINAL SCORE: ${score}`;
+            overlay.classList.remove('hidden');
+        }
+
+        document.getElementById('restart-btn').addEventListener('click', startGame);
+
+        // Start initial game
+        startGame();
+    </script>
+</body>
+</html>
